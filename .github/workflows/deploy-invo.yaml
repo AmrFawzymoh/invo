@@ -2,20 +2,21 @@ name: Invo CI/CD
 on: [push]
 
 jobs:
-  Deploy:
-    name: Desploy invo to EC2 
+  Hostaway job:
+    name: Desploy invo job 
     runs-on: ubuntu-latest
   
     steps:
-      - name: Checkout the code
+      - name: Checkout invo to the github action runner
         uses: actions/checkout@v3
 
-      - name: Deploy to the remote server
+      - name: SSH connect and deploy Invo to the remote EC2 instance
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.REMOTE_HOST }}
           username: ${{ secrets.REMOTE_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            whoami
+            pwd
+            touch hello.txt
             ls -la

@@ -2,7 +2,7 @@ name: Invo CI/CD
 on: [push]
 
 jobs:
-  Hostaway job:
+  Hostaway_job:
     name: Desploy invo job 
     runs-on: ubuntu-latest
   

@@ -22,7 +22,6 @@ jobs:
             echo "================"
             cd invo/
             cp .env.example .env
-            #            sed -i "s/localhost/${{ RDS_ADDRESS }}/g" .env
             sed -i "s/phalcon_invo/${{ RDS_DBNAME }}/g" .env
             sed -i "0,/phalcon/{s/phalcon/${{ RDS_USER }}/}" .env
             sed -i "s/secret/${{ RDS_PASSWORD }}/g" .env

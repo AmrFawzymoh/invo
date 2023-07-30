@@ -1,0 +1,39 @@
+name: Invo CI/CD
+on: [push]
+
+jobs:
+  CI_CD_job:
+    name: Test and Deploy invo changes 
+    runs-on: ubuntu-latest
+  
+    steps:
+      #      - name: Checkout invo to the github action runner We don't meed this step as we will use the remote ssh to connect and deploy code on ec2
+      #        uses: actions/checkout@v3
+
+      - name: SSH connect and deploy the changes to the remote EC2 instance
+        uses: appleboy/ssh-action@v1.0.0
+          #        env:  we don't need this section as .env is already modified on the machine from the user_data or from the setup workflow
+          #          RDS_ADDRESS: ${{ secrets.RDS_ADDRESS }}
+          #          RDS_DBNAME: ${{ secrets.RDS_DBNAME }}
+          #          RDS_USER: ${{ secrets.RDS_USER }}
+          #          RDS_PASSWORD: ${{ secrets.RDS_PASSWORD }}
+        with:
+          host: ${{ secrets.REMOTE_HOST }}
+          username: ${{ secrets.REMOTE_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+            #          envs: RDS_ADDRESS,RDS_DBNAME,RDS_USER,RDS_PASSWORD
+          script: |
+            pwd
+            echo "Pull the changes from Invo's GitHub repo"
+            git pull https://github.com/phalcon/invo.git
+            cd invo/
+            echo "Validate composer.json and composer.lock"
+            composer validate
+            echo "Check for newly addes packages to install"
+            composer require --dev phalcon/migrations
+            echo "Run DB migrations"
+            vendor/bin/phalcon-migrations run --config=migrations.php
+            echo "Restart the Invo app"
+            kill -9 `sudo netstat -tupln | grep 8000 | tr -s " " | cut -d " " -f7 | cut -d "/" -f1`
+            /usr/bin/php -S 0.0.0.0:8000 -t public .htrouter.php&
+

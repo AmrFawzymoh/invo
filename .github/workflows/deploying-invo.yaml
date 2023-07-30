@@ -1,0 +1,89 @@
+#This will be the workflow when deploying invo from scratch on an empty machine (first deployment)
+#meaning this is a deployment pipeline, as we are using git clone not git pull, so we will start over from installing the dependencies, phalcon, invo, composer and finally starting the app
+
+on: [push]
+
+jobs:
+  Hostaway_job:
+    name: Deploy and Setup invo 
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: SSH connect and deploy invo to the remote EC2 instance
+        uses: appleboy/ssh-action@v1.0.0
+        env:
+          RDS_ADDRESS: ${{ secrets.RDS_ADDRESS }}
+          RDS_DBNAME: ${{ secrets.RDS_DBNAME }}
+          RDS_USER: ${{ secrets.RDS_USER }}
+          RDS_PASSWORD: ${{ secrets.RDS_PASSWORD }}
+        with:
+          host: ${{ secrets.REMOTE_HOST }}
+          username: ${{ secrets.REMOTE_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          envs: RDS_ADDRESS,RDS_DBNAME,RDS_USER,RDS_PASSWORD
+          script: |
+            echo "*===========================================================*"
+            echo "* Install and deploy the requirement packages for phalcon 5 *"
+            echo "*===========================================================*"
+
+            apt-get update -y
+            apt-get install lsb-release ca-certificates apt-transport-https software-properties-common -y
+            add-apt-repository ppa:ondrej/php -y
+            apt-get update -y
+            apt-get install php8.1-dev php8.1-mysql php8.1-xml php8.1-curl gcc zip unzip php8.1-zip libpcre3-dev -y
+
+            echo "*===========================================================*"
+            echo "*              Deploy and Install cphalcon                  *"
+            echo "*===========================================================*"
+
+            git clone https://github.com/phalcon/cphalcon.git
+            cd /home/ubuntu/cphalcon/build
+            sudo ./install
+
+            echo "*===========================================================*"
+            echo "*          Add the phalcon extention to php                 *"
+            echo "*===========================================================*"
+
+            php_ini_file=`php --ini | head -2 | tail -1 | tr -s " " | cut -d ":" -f2`
+            echo "extension=phalcon.so" >> $php_ini_file
+            cd
+
+            echo "*===========================================================*"
+            echo "*          clone invo and edit the .env file                *"
+            echo "*===========================================================*"
+
+            git clone https://github.com/phalcon/invo.git
+            cd invo
+            cp .env.example .env
+            sed -i "s/localhost/$RDS_ADDRESS/g" .env
+            sed -i "s/phalcon_invo/$RDS_DBNAME/g" .env
+            sed -i "s/secret/$RDS_PASSWORD/g" .env
+            sed -i "0,/phalcon/{s/phalcon/$RDS_USER/}" .env
+            cd
+
+            echo "*===========================================================*"
+            echo "*         Downloading and Installing Composer               *"
+            echo "*===========================================================*"
+
+            curl -sS https://getcomposer.org/installer -o /tmp/composer-setup.php
+            php /tmp/composer-setup.php --install-dir=/usr/local/bin --filename=composer
+
+            echo "*===========================================================*"
+            echo "*   Installing the required packages Using Composer         *"
+            echo "*===========================================================*"
+
+            cd invo
+            composer require --dev phalcon/migrations
+
+            echo "*===========================================================*"
+            echo "*            Running the DB migrations                      *"
+            echo "*===========================================================*"
+
+            vendor/bin/phalcon-migrations run --config=migrations.php
+
+            echo "*===========================================================*"
+            echo "*          Starting the application                         *"
+            echo "*===========================================================*"
+
+            /usr/bin/php -S 0.0.0.0:8000 -t public .htrouter.php&

@@ -3,7 +3,7 @@ on: [push]
 
 jobs:
   Hostaway_job:
-    name: Desploy invo job 
+    name: Deploy invo job 
     runs-on: ubuntu-latest
   
     steps:

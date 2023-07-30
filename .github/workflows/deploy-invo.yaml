@@ -12,16 +12,20 @@ jobs:
 
       - name: SSH connect and deploy Invo to the remote EC2 instance
         uses: appleboy/ssh-action@v1.0.0
+
+        env:
+          RDS_ADDRESS: ${{ secrets.RDS_ADDRESS }}
+          RDS_DBNAME: ${{ secrets.RDS_DBNAME }}
+          RDS_USER: ${{ secrets.RDS_USER }}
+          RDS_PASSWORD: ${{ secrets.RDS_PASSWORD }}
+
         with:
           host: ${{ secrets.REMOTE_HOST }}
           username: ${{ secrets.REMOTE_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          RDS_ADDRESS: ${{ secret.RDS_ADDRESS }}
-          RDS_DBNAME: ${{ secrets.RDS_DBNAME }}
-          RDS_USER: ${{ secrets.RDS_USER }}
-          RDS_PASSWORD: ${{ secrets.RDS_PASSWORD }}
+          envs: RDS_ADDRESS,RDS_DBNAME,RDS_USER,RDS_PASSWORD
           script: |
-            ls -la
+            ls -a
             git clone https://github.com/phalcon/invo.git
             echo "================"
             cd invo/
